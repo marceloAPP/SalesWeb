@@ -2,13 +2,20 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+
+using SalesWebMvc.Models;
+using SalesWebMvc.Data;
+using SalesWebMvc.Services;
 
 namespace SalesWebMvc
 {
@@ -33,14 +40,34 @@ namespace SalesWebMvc
 
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+
+            services.AddDbContext<SalesWebMvcContext>(options =>
+                    options.UseMySql(Configuration.GetConnectionString("SalesWebMvcContext"), builder =>
+                        builder.MigrationsAssembly("SalesWebMvc")));
+
+            services.AddScoped<SeedingService>();
+            services.AddScoped<VendedoresService>();
+            services.AddScoped<DepartamentoService>();
+            services.AddScoped<RegistroVendasService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, SeedingService seedService)
         {
+            var enPT = new CultureInfo("en-PT");
+            var opcoesLocalizacao = new RequestLocalizationOptions
+            {
+                DefaultRequestCulture = new RequestCulture(enPT),
+                SupportedCultures = new List<CultureInfo> { enPT },
+                SupportedUICultures = new List<CultureInfo> { enPT }
+            };
+
+            app.UseRequestLocalization(opcoesLocalizacao);
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+                seedService.Seed();
             }
             else
             {
